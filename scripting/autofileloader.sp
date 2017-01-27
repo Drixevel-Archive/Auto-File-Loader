@@ -1,7 +1,7 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-#define DEBUG
+//#define DEBUG
 
 #define PLUGIN_DESCRIPTION "Automatically takes custom files and precaches them and adds them to the downloads table."
 #define PLUGIN_VERSION "1.0.0"
@@ -99,23 +99,26 @@ public void OnConfigsExecuted()
 
 	//Load all the folders inside of the custom folder and load their files.
 	DirectoryListing dir = OpenDirectory("custom");
-	FileType fType;
-
-	while (ReadDirEntry(dir, sPath, sizeof(sPath), fType))
+	if (dir != null)
 	{
-		//Exclude these paths since they're invalid.
-		if (StrEqual(sPath, "workshop") || StrEqual(sPath, "readme.txt") || StrEqual(sPath, "..") || StrEqual(sPath, "."))
+		FileType fType;
+
+		while (ReadDirEntry(dir, sPath, sizeof(sPath), fType))
 		{
-			continue;
+			//Exclude these paths since they're invalid.
+			if (StrEqual(sPath, "workshop") || StrEqual(sPath, "readme.txt") || StrEqual(sPath, "..") || StrEqual(sPath, "."))
+			{
+				continue;
+			}
+
+			char sBuffer[PLATFORM_MAX_PATH];
+			Format(sBuffer, sizeof(sBuffer), "custom/%s", sPath);
+
+			AutoLoadDirectory(sBuffer);
 		}
 
-		char sBuffer[PLATFORM_MAX_PATH];
-		Format(sBuffer, sizeof(sBuffer), "custom/%s", sPath);
-
-		AutoLoadDirectory(sBuffer);
+		delete dir;
 	}
-
-	delete dir;
 }
 
 bool AutoLoadDirectory(const char[] path)
