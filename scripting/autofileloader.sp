@@ -178,7 +178,7 @@ bool AutoLoadFiles(const char[] path, const char[] remove, eLoad load)
 	while (ReadDirEntry(dir, sPath, sizeof(sPath), fType))
 	{
 		//Exclude these paths since they're invalid.
-		if (StrEqual(sPath, "..") || StrEqual(sPath, "."))
+		if (StrEqual(sPath, "..") || StrEqual(sPath, ".") || StrEqual(sPath, "sound.cache") || StrContains(sPath, ".jpg") != -1)
 		{
 			continue;
 		}
@@ -199,12 +199,6 @@ bool AutoLoadFiles(const char[] path, const char[] remove, eLoad load)
 		}
 		else if (fType == FileType_File)
 		{
-			//Random file, lets skip it.
-			if (StrEqual(sBuffer, "sound.cache"))
-			{
-				continue;
-			}
-
 			ReplaceString(sBuffer, sizeof(sBuffer), remove, "");
 			RemoveFrontString(sBuffer, sizeof(sBuffer), 1);
 
