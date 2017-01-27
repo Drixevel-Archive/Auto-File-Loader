@@ -202,6 +202,13 @@ bool AutoLoadFiles(const char[] path, const char[] remove, eLoad load)
 			ReplaceString(sBuffer, sizeof(sBuffer), remove, "");
 			RemoveFrontString(sBuffer, sizeof(sBuffer), 1);
 
+			//Add this file to the downloads table.
+			AddFileToDownloadsTable(sBuffer);
+
+			#if defined DEBUG
+			LogToFileEx("addons/sourcemod/logs/autofileloader.debug.log", "Adding To Downloads Table: %s", sBuffer);
+			#endif
+
 			switch (load)
 			{
 				case Load_Materials:
@@ -233,13 +240,6 @@ bool AutoLoadFiles(const char[] path, const char[] remove, eLoad load)
 					#endif
 				}
 			}
-
-			//Add this file to the downloads table.
-			AddFileToDownloadsTable(sBuffer);
-
-			#if defined DEBUG
-			LogToFileEx("addons/sourcemod/logs/autofileloader.debug.log", "Adding To Downloads Table: %s", sBuffer);
-			#endif
 		}
 	}
 
