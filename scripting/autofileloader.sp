@@ -178,7 +178,7 @@ bool AutoLoadFiles(const char[] path, const char[] remove, eLoad load)
 	while (ReadDirEntry(dir, sPath, sizeof(sPath), fType))
 	{
 		//Exclude these paths since they're invalid.
-		if (StrEqual(sPath, "..") || StrEqual(sPath, ".") || StrEqual(sPath, "sound.cache") || StrContains(sPath, ".jpg") != -1)
+		if (StrEqual(sPath, "..") || StrEqual(sPath, ".") || StrEqual(sPath, "sound.cache") || StrContains(sPath, ".jpg") != -1 || StrContains(sPath, ".txt") != -1)
 		{
 			continue;
 		}
