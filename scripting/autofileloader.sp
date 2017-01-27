@@ -225,6 +225,7 @@ bool AutoLoadFiles(const char[] path, const char[] remove, eLoad load)
 
 				case Load_Sounds:
 				{
+					ReplaceString(sBuffer, sizeof(sBuffer), "sound/", "");
 					PrecacheSound(sBuffer);
 
 					#if defined DEBUG
