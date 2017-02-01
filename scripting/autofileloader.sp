@@ -4,7 +4,7 @@
 //#define DEBUG
 
 #define PLUGIN_DESCRIPTION "Automatically takes custom files and precaches them and adds them to the downloads table."
-#define PLUGIN_VERSION "1.0.0"
+#define PLUGIN_VERSION "1.0.1"
 
 #include <sourcemod>
 #include <sdktools>
@@ -13,6 +13,7 @@ ConVar cvar_Status;
 ConVar cvar_Exclusions;
 
 ArrayList array_Exclusions;
+ArrayList array_Downloadables;
 
 enum eLoad
 {
@@ -42,6 +43,14 @@ public void OnPluginStart()
 	//AutoExecConfig();
 
 	array_Exclusions = CreateArray(ByteCountToCells(PLATFORM_MAX_PATH));
+
+	array_Downloadables = CreateArray(ByteCountToCells(6));
+	PushArrayString(array_Downloadables, ".vmt");
+	PushArrayString(array_Downloadables, ".vtf");
+	PushArrayString(array_Downloadables, ".vtx");
+	PushArrayString(array_Downloadables, ".mdl");
+	PushArrayString(array_Downloadables, ".phy");
+	PushArrayString(array_Downloadables, ".vvd");
 }
 
 public void OnConfigsExecuted()
@@ -105,8 +114,14 @@ public void OnConfigsExecuted()
 
 		while (ReadDirEntry(dir, sPath, sizeof(sPath), fType))
 		{
+			//We only need to parse through directories here.
+			if (fType != FileType_Directory)
+			{
+				continue;
+			}
+
 			//Exclude these paths since they're invalid.
-			if (StrEqual(sPath, "workshop") || StrEqual(sPath, "readme.txt") || StrEqual(sPath, "..") || StrEqual(sPath, "."))
+			if (StrEqual(sPath, "workshop") || StrEqual(sPath, ".") || StrEqual(sPath, ".."))
 			{
 				continue;
 			}
@@ -135,7 +150,7 @@ bool AutoLoadDirectory(const char[] path)
 
 	while (ReadDirEntry(dir, sPath, sizeof(sPath), fType))
 	{
-		//From here, we only need to parse directories so if it's a file, skip it.
+		//We only need to parse through directories here.
 		if (fType != FileType_Directory)
 		{
 			continue;
@@ -181,7 +196,7 @@ bool AutoLoadFiles(const char[] path, const char[] remove, eLoad load)
 	while (ReadDirEntry(dir, sPath, sizeof(sPath), fType))
 	{
 		//Exclude these paths since they're invalid.
-		if (StrEqual(sPath, "..") || StrEqual(sPath, ".") || StrEqual(sPath, "sound.cache") || StrContains(sPath, ".jpg") != -1 || StrContains(sPath, ".txt") != -1)
+		if (StrEqual(sPath, "..") || StrEqual(sPath, "."))
 		{
 			continue;
 		}
@@ -202,11 +217,22 @@ bool AutoLoadFiles(const char[] path, const char[] remove, eLoad load)
 		}
 		else if (fType == FileType_File)
 		{
+			//Some paths don't need to be absolute due to how precache functions work with Sourcemod.
 			ReplaceString(sBuffer, sizeof(sBuffer), remove, "");
 			RemoveFrontString(sBuffer, sizeof(sBuffer), 1);
 
-			//Add this file to the downloads table.
-			AddFileToDownloadsTable(sBuffer);
+			//Add this file to the downloads table if it has a valid extension.
+			for (int i = 0; i < GetArraySize(array_Downloadables); i++)
+			{
+				char sExtension[6];
+				GetArrayString(array_Downloadables, i, sExtension, sizeof(sExtension));
+
+				if (StrContains(sBuffer, sExtension) != -1)
+				{
+					AddFileToDownloadsTable(sBuffer);
+					break;
+				}
+			}
 
 			#if defined DEBUG
 			LogToFileEx("addons/sourcemod/logs/autofileloader.debug.log", "Adding To Downloads Table: %s", sBuffer);
@@ -216,8 +242,14 @@ bool AutoLoadFiles(const char[] path, const char[] remove, eLoad load)
 			{
 				case Load_Materials:
 				{
-					//TODO: Figure out IF material files should be precached as decals.
-					//PrecacheDecal(sBuffer);
+					if (StrContains(sPath, "decals") != -1)
+					{
+						PrecacheDecal(sBuffer);
+
+						#if defined DEBUG
+						LogToFileEx("addons/sourcemod/logs/autofileloader.debug.log", "Precaching Decal: %s", sBuffer);
+						#endif
+					}
 				}
 
 				case Load_Models:
