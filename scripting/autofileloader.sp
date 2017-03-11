@@ -5,7 +5,7 @@
 //Defines
 //#define DEBUG
 #define PLUGIN_DESCRIPTION "Automatically takes custom files and precaches them and adds them to the downloads table."
-#define PLUGIN_VERSION "1.0.1"
+#define PLUGIN_VERSION "1.0.2"
 
 //Sourcemod Includes
 #include <sourcemod>
@@ -54,8 +54,11 @@ public void OnPluginStart()
 	PushArrayString(array_Downloadables, ".mdl");
 	PushArrayString(array_Downloadables, ".phy");
 	PushArrayString(array_Downloadables, ".vvd");
+	PushArrayString(array_Downloadables, ".wav");
+	PushArrayString(array_Downloadables, ".mp3");
 
 	RegAdminCmd("sm_generateexternals", Command_GenerateExternals, ADMFLAG_ROOT);
+	RegAdminCmd("sm_ge", Command_GenerateExternals, ADMFLAG_ROOT);
 }
 
 public void OnConfigsExecuted()
@@ -67,14 +70,20 @@ public void OnConfigsExecuted()
 
 	PullExclusions();
 
+	StartProcess();
+}
+
+void StartProcess(bool print = false)
+{
 	//Load the base directory's files.
-	AutoLoadDirectory(".");
+	AutoLoadDirectory(".", print);
 
 	//Load all the folders inside of the custom folder and load their files.
 	DirectoryListing dir = OpenDirectory("custom");
 	if (dir != null)
 	{
 		FileType fType;
+		char sPath[PLATFORM_MAX_PATH];
 
 		while (ReadDirEntry(dir, sPath, sizeof(sPath), fType))
 		{
@@ -93,14 +102,14 @@ public void OnConfigsExecuted()
 			char sBuffer[PLATFORM_MAX_PATH];
 			Format(sBuffer, sizeof(sBuffer), "custom/%s", sPath);
 
-			AutoLoadDirectory(sBuffer);
+			AutoLoadDirectory(sBuffer, print);
 		}
 
 		delete dir;
 	}
 }
 
-bool AutoLoadDirectory(const char[] path)
+bool AutoLoadDirectory(const char[] path, bool print = false)
 {
 	DirectoryListing dir = OpenDirectory(path);
 
@@ -125,15 +134,15 @@ bool AutoLoadDirectory(const char[] path)
 
 		if (StrEqual(sPath, "materials"))
 		{
-			AutoLoadFiles(sBuffer, path, Load_Materials);
+			AutoLoadFiles(sBuffer, path, Load_Materials, print);
 		}
 		else if (StrEqual(sPath, "models"))
 		{
-			AutoLoadFiles(sBuffer, path, Load_Models);
+			AutoLoadFiles(sBuffer, path, Load_Models, print);
 		}
 		else if (StrEqual(sPath, "sound"))
 		{
-			AutoLoadFiles(sBuffer, path, Load_Sounds);
+			AutoLoadFiles(sBuffer, path, Load_Sounds, print);
 		}
 	}
 
@@ -141,7 +150,7 @@ bool AutoLoadDirectory(const char[] path)
 	return true;
 }
 
-bool AutoLoadFiles(const char[] path, const char[] remove, eLoad load)
+bool AutoLoadFiles(const char[] path, const char[] remove, eLoad load, bool print = false)
 {
 	#if defined DEBUG
 	LogToFileEx("addons/sourcemod/logs/autofileloader.debug.log", "Loading Directory: %s - %s - %i", path, remove, load);
@@ -179,7 +188,7 @@ bool AutoLoadFiles(const char[] path, const char[] remove, eLoad load)
 			case FileType_Directory:
 			{
 				//This is a directory so we should recursively auto load its files the same way.
-				AutoLoadFiles(sBuffer, remove, load);
+				AutoLoadFiles(sBuffer, remove, load, print);
 			}
 
 			case FileType_File:
@@ -187,6 +196,10 @@ bool AutoLoadFiles(const char[] path, const char[] remove, eLoad load)
 				//Some paths don't need to be absolute due to how precache functions work with Sourcemod.
 				ReplaceString(sBuffer, sizeof(sBuffer), remove, "");
 				RemoveFrontString(sBuffer, sizeof(sBuffer), 1);
+				
+				#if defined DEBUG
+				LogToFileEx("addons/sourcemod/logs/autofileloader.debug.log", "Adding To Downloads Table: %s", sBuffer);
+				#endif
 
 				//Add this file to the downloads table if it has a valid extension.
 				for (int i = 0; i < GetArraySize(array_Downloadables); i++)
@@ -196,14 +209,15 @@ bool AutoLoadFiles(const char[] path, const char[] remove, eLoad load)
 
 					if (StrContains(sBuffer, sExtension) != -1)
 					{
+						if (print)
+						{
+							LogToFileEx2("addons/sourcemod/logs/autofileloader.generate.log", "%s", sBuffer);
+						}
+						
 						AddFileToDownloadsTable(sBuffer);
 						break;
 					}
 				}
-
-				#if defined DEBUG
-				LogToFileEx("addons/sourcemod/logs/autofileloader.debug.log", "Adding To Downloads Table: %s", sBuffer);
-				#endif
 
 				switch (load)
 				{
@@ -211,11 +225,11 @@ bool AutoLoadFiles(const char[] path, const char[] remove, eLoad load)
 					{
 						if (StrContains(sPath, "decals") != -1)
 						{
-							PrecacheDecal(sBuffer);
-
 							#if defined DEBUG
 							LogToFileEx("addons/sourcemod/logs/autofileloader.debug.log", "Precaching Decal: %s", sBuffer);
 							#endif
+							
+							PrecacheDecal(sBuffer);
 						}
 					}
 
@@ -224,22 +238,25 @@ bool AutoLoadFiles(const char[] path, const char[] remove, eLoad load)
 						//We only need to precache the MDL file itself.
 						if (StrContains(sPath, ".mdl") != -1)
 						{
-							PrecacheModel(sBuffer);
-
 							#if defined DEBUG
 							LogToFileEx("addons/sourcemod/logs/autofileloader.debug.log", "Precaching Model: %s", sBuffer);
 							#endif
+							
+							PrecacheModel(sBuffer);
 						}
 					}
 
 					case Load_Sounds:
 					{
-						ReplaceString(sBuffer, sizeof(sBuffer), "sound/", "");
-						PrecacheSound(sBuffer);
-
-						#if defined DEBUG
-						LogToFileEx("addons/sourcemod/logs/autofileloader.debug.log", "Precaching Sound: %s", sBuffer);
-						#endif
+						if (StrContains(sPath, ".wav") != -1 || StrContains(sPath, ".mp3") != -1)
+						{
+							#if defined DEBUG
+							LogToFileEx("addons/sourcemod/logs/autofileloader.debug.log", "Precaching Sound: %s", sBuffer);
+							#endif
+							
+							ReplaceString(sBuffer, sizeof(sBuffer), "sound/", "");
+							PrecacheSound(sBuffer);
+						}
 					}
 				}
 			}
@@ -250,6 +267,21 @@ bool AutoLoadFiles(const char[] path, const char[] remove, eLoad load)
 	return true;
 }
 
+stock void LogToFileEx2(const char[] file_location, const char[] format, any ...)
+{
+	char sBuffer[1024];
+	VFormat(sBuffer, sizeof(sBuffer), format, 3);
+	
+	Handle file = OpenFile(file_location,"a");
+	
+	if (file != null)
+	{
+		WriteFileLine(file, sBuffer);
+	}
+	
+	CloseHandle(file);
+}
+
 stock void RemoveFrontString(char[] strInput, int iSize, int iVar)
 {
 	strcopy(strInput, iSize, strInput[iVar]);
@@ -257,7 +289,8 @@ stock void RemoveFrontString(char[] strInput, int iSize, int iVar)
 
 public Action Command_GenerateExternals(int client, int args)
 {
-
+	StartProcess(true);
+	ReplyToCommand(client, "Generated, file should be under 'addons/sourcemod/logs/autofileloader.generate.log'.");
 	return Plugin_Handled;
 }
 
