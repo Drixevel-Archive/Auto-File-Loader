@@ -5,7 +5,7 @@
 //Defines
 //#define DEBUG
 #define PLUGIN_DESCRIPTION "Automatically takes custom files and precaches them and adds them to the downloads table."
-#define PLUGIN_VERSION "1.0.2"
+#define PLUGIN_VERSION "1.0.3"
 
 //Sourcemod Includes
 #include <sourcemod>
@@ -61,7 +61,7 @@ public void OnPluginStart()
 	RegAdminCmd("sm_ge", Command_GenerateExternals, ADMFLAG_ROOT);
 }
 
-public void OnConfigsExecuted()
+public void OnMapStart()
 {
 	if (!GetConVarBool(cvar_Status))
 	{
@@ -69,7 +69,6 @@ public void OnConfigsExecuted()
 	}
 
 	PullExclusions();
-
 	StartProcess();
 }
 
