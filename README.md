@@ -1,2 +1,0 @@
-# Sourcemod - Auto File Loader
-A Sourcemod project that allows server operators to automatically handle the precaching and file downloads for custom 3rd party files such as materials, models and sounds for the Source Engine.
