@@ -28,10 +28,10 @@ enum eLoad
 public Plugin myinfo =
 {
 	name = "Auto File Loader",
-	author = "Keith Warren (Shaders Allen)",
+	author = "Drixevel",
 	description = PLUGIN_DESCRIPTION,
 	version = PLUGIN_VERSION,
-	url = "http://www.shadersallen.com/"
+	url = "https://drixevel.dev/"
 };
 
 public void OnPluginStart()
